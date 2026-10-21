@@ -1,0 +1,36 @@
+{
+  "name": "hisab360",
+  "version": "7.2.3",
+  "private": true,
+  "type": "module",
+  "description": "Hisab360 v7 — Premium Multi-Workspace Khata, POS, Stock, Salary, Personal Ledger & Business Manager",
+  "author": "Yasir Khan",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build:web": "vite build",
+    "cap:add": "npx cap add android",
+    "cap:sync": "npm run build:web && npx cap sync android",
+    "android:debug": "npm run cap:sync && cd android && gradlew.bat assembleDebug",
+    "android:aab": "npm run cap:sync && cd android && gradlew.bat bundleRelease",
+    "test": "node --test --test-isolation=none tests/domain.test.mjs",
+    "test:rules": "firebase emulators:exec --project demo-hisab360 --only firestore \"node tests/firestore-rules.mjs\""
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.2",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.2",
+    "@capacitor/filesystem": "8.1.2",
+    "@capacitor/share": "8.0.1",
+    "chart.js": "4.5.1",
+    "firebase": "12.19.0",
+    "html2canvas": "1.4.1",
+    "jspdf": "3.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "firebase-tools": "^15.33.0",
+    "vite": "8.3.2"
+  }
+}

@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1e3a5f">
+<meta name="author" content="Yasir Khan">
+<title>Hisab360 — Khata, POS & Stock</title>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/premium.css">
+<link rel="stylesheet" href="css/v7.css">
+<link rel="stylesheet" href="css/professional.css">
+<link rel="icon" type="image/png" href="favicon.png">
+</head>
+<body>
+<section id="recoveryBanner" class="recovery-banner"><h3>Account 30-day recovery mein hai</h3><p>Apna account restore karein. Master aap ka data access nahi kar sakta.</p><button class="km-btn green" onclick="H360.openDeletedWorkspaces()">♻️ Restore Account</button><button class="km-btn ghost" onclick="logout()">Logout</button></section>
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">📒</div>
+    <h2>Hisab360</h2>
+    <div class="sub">📍 Smart Shop Manager System</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">🔐 Login</div>
+      <div class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">✨ Create Account</div>
+    </div>
+    <form id="loginForm" onsubmit="event.preventDefault(); doLogin();">
+      <div class="input-group" data-icon="📧"><input type="email" id="loginEmail" placeholder="Email address" autocomplete="email"></div>
+      <div class="input-group" data-icon="🔒"><input type="password" id="loginPass" placeholder="Password" autocomplete="current-password"></div>
+      <button class="btn-auth" type="submit"><span>🔓</span> <span>Login</span></button>
+      <button class="btn-bio" id="bioBtn" type="button" onclick="loginWithBiometric()"><span>👆</span> <span>Fingerprint se Login</span></button>
+      <label class="remember-row" for="rememberMe"><input type="checkbox" id="rememberMe" checked><span>Mujhe yaad rakhein (auto-login)</span></label>
+      <div class="auth-link"><a onclick="showForgotPassword()">🔗 Password bhool gaye?</a></div>
+    </form>
+    <form id="signupForm" style="display:none;" onsubmit="event.preventDefault(); requestAccount();">
+      <div class="input-group" data-icon="👤"><input type="text" id="suName" placeholder="Aap ka poora naam" autocomplete="name"></div>
+      <div class="input-group" data-icon="🏪"><input type="text" id="suShop" placeholder="Shop ka naam" autocomplete="organization"></div>
+      <div class="input-group" data-icon="🧩"><select id="suCategory" onchange="H360.categoryChanged(this.value)" style="width:100%;border:0;background:transparent;outline:none;padding:14px 12px 14px 44px;font:inherit;color:inherit;"><option value="karyana">Karyana / Grocery</option><option value="general">General Store</option><option value="superstore">Super Store</option><option value="mobile">Mobile Shop</option><option value="computer">Computer Shop</option><option value="pharmacy">Pharmacy / Medical</option><option value="hardware">Hardware</option><option value="personal">Personal Hisab / Loans & Finance</option><option value="hybrid">Hybrid / Multiple Categories</option><option value="other">Other / Custom</option></select></div>
+      <div id="suHybridModules" class="h360-signup-options" style="display:none;">
+        <div class="h360-mini-title">Modules select karein</div>
+        <label><input type="checkbox" value="khata" checked> 👥 Khata</label><label><input type="checkbox" value="pos" checked> 🧾 POS</label><label><input type="checkbox" value="stock" checked> 📦 Stock</label><label><input type="checkbox" value="loans"> 🤝 Personal Loans</label>
+      </div>
+      <div class="h360-signup-grid">
+        <div class="input-group" data-icon="🌐"><select id="suLanguage"><option value="en">English</option><option value="ur">اردو</option></select></div>
+        <div class="input-group" data-icon="🎨"><select id="suHeaderStyle"><option value="navy">Navy Gold</option><option value="emerald">Emerald</option><option value="violet">Violet</option><option value="amber">Amber</option></select></div>
+      </div>
+      <div class="input-group" data-icon="🧾"><select id="suReceiptStyle"><option value="modern">Modern Receipt</option><option value="classic">Classic Receipt</option><option value="thermal80">80mm Thermal</option><option value="thermal58">58mm Thermal</option></select></div>
+      <div class="input-group" data-icon="📍"><input type="text" id="suLocation" placeholder="Location" autocomplete="address-level2"></div>
+      <div class="input-group" data-icon="📱"><input type="tel" id="suPhone" placeholder="Phone: 923001234567" autocomplete="tel"></div>
+      <div class="input-group" data-icon="💬"><input type="tel" id="suWhatsapp" placeholder="WhatsApp (optional)" autocomplete="tel"></div>
+      <div class="input-group" data-icon="📧"><input type="email" id="suEmail" placeholder="Email address" autocomplete="email"></div>
+      <div class="input-group" data-icon="🔒"><input type="password" id="suPass" placeholder="Strong password" autocomplete="new-password" oninput="H360.passwordMeter(this.value)"></div>
+      <div class="h360-password-meter"><i id="suPassBar"></i><span id="suPassHint">10+ chars · A-Z · a-z · 0-9 · special</span></div>
+      <div class="input-group" data-icon="🔒"><input type="password" id="suPass2" placeholder="Password dobara" autocomplete="new-password"></div>
+      <button class="btn-auth green" type="submit"><span>📤</span> <span>Account Request Bhejein</span></button>
+      <div style="font-size:11px;color:#7f8c8d;text-align:center;margin-top:12px;line-height:1.6;">⚠️ Aap ki request <strong>admin</strong> ko jayegi.<br>Approval ke baad aap login kar sakenge.</div>
+    </form>
+    <div class="auth-err" id="authErr"></div>
+    <div class="auth-credit">
+      <div class="secure">🔒 Secured by Firebase Authentication</div>
+      <div class="dev"><span class="dev-heart">💻</span> Developed by <strong>Yasir Khan</strong></div>
+    </div>
+  </div>
+</div>
+
+<div class="pin-screen" id="pinLockScreen">
+  <div class="pin-box">
+    <div class="pin-logo">🔒</div>
+    <h2>App Locked</h2>
+    <div class="sub">Apna 4-digit PIN daalein</div>
+    <div class="pin-dots" id="lockDots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+    <div class="pin-keypad" id="lockKeypad"></div>
+    <div class="pin-actions"><button class="pin-action-btn forgot" onclick="forgotPin()">❓ PIN Bhool Gaye?</button></div>
+    <div class="pin-error" id="lockErr"></div>
+    <div style="margin-top:16px;font-size:10px;color:#7f8c8d;">💻 by Yasir Khan</div>
+  </div>
+</div>
+
+<div class="pin-screen" id="pinSetupScreen">
+  <div class="pin-box">
+    <div class="pin-logo" id="setupIcon">✨</div>
+    <h2 id="setupTitle">PIN Set Karein</h2>
+    <div class="sub" id="setupSub">4-digit PIN banayein (Step 1/2)</div>
+    <div class="pin-dots" id="setupDots"><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div></div>
+    <div class="pin-keypad" id="setupKeypad"></div>
+    <div class="pin-error" id="setupErr"></div>
+    <div class="pin-hint" id="setupHint"></div>
+    <div style="margin-top:16px;font-size:10px;color:#7f8c8d;">💻 by Yasir Khan</div>
+  </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+  <header>
+    <div class="h710-brandbar">
+      <div class="h710-brand"><div class="h710-brandmark">H</div><div><b>Hisab<span>360</span></b><small>Smart Business · Easy Hisab</small></div></div>
+      <div class="h710-actions">
+        <button id="workspaceSwitcher" class="h360-workspace-switch" onclick="H360.openAccountHub()" title="Account"><span>👤</span><small>Account</small></button>
+        <button id="headerThemeBtn" class="h360-header-settings h360-theme-toggle" onclick="H360.toggleQuickTheme()" title="Light / Dark mode" aria-label="Toggle light and dark mode"><span id="headerThemeIcon">☀️</span></button>
+        <div id="networkBadge">● Online</div>
+      </div>
+    </div>
+    <div class="header-content h710-workspace-card">
+      <div class="header-logo">📒</div>
+      <div class="header-text">
+        <div class="h360-title-row"><h1 id="headerShopName">Hisab360</h1><span id="headerCategoryBadge" class="h360-category-badge">Business</span></div>
+        <p><span id="headerShopLocation">📍</span> <span id="headerUserEmail">📧</span></p>
+      </div>
+      <span class="h710-chevron">›</span>
+    </div>
+    <div class="header-stats">
+      <div class="stat-box h710-people"><span class="h710-stat-icon">👥</span><span class="val" id="statCustomers">0</span><span class="lbl" id="statCustomersLabel">Customers</span></div>
+      <div class="stat-box h710-wasooli"><span class="h710-stat-icon">💵</span><span class="val" id="statWasooli">Rs 0</span><span class="lbl">Total Wasooli</span></div>
+      <div class="stat-box h710-due"><span class="h710-stat-icon">🤲</span><span class="val" id="statBalance">Rs 0</span><span class="lbl" id="statBalanceLabel">Total Due</span></div>
+      <div class="stat-box h710-activity"><span class="h710-stat-icon">📄</span><span class="val" id="statActivity">0</span><span class="lbl">Today Activity</span></div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-module="khata" data-tab="list" onclick="switchTab('list', this)"><span>👥</span> <span id="navCustomers">People</span></div>
+    <div class="tab" data-module="khata" data-tab="add" onclick="switchTab('add', this)"><span>➕</span> <span id="navNew">New</span></div>
+    <div class="tab" data-module="stock" data-tab="stock" onclick="switchTab('stock', this)"><span>📦</span> <span id="navStock">Stock</span></div>
+    <div class="tab" data-module="pos" data-tab="business" onclick="switchTab('business', this)"><span>🧾</span> <span id="navBusiness">Sale</span></div>
+    <div class="tab" data-module="loans" data-tab="personal" onclick="switchTab('personal', this)"><span>🤝</span> <span id="navLoans">Loans</span></div>
+    <div class="tab" data-module="reports" data-tab="summary" onclick="switchTab('summary', this)"><span>📊</span> <span id="navReport">Report</span></div>
+    <div class="tab" id="tabRequests" data-module="admin" data-tab="requests" onclick="switchTab('requests', this)"><span>🔔</span> <span>Alerts</span><span class="badge-num" id="reqBadge" hidden></span></div>
+    <div class="tab" data-module="settings" data-tab="settings" onclick="switchTab('settings', this)"><span>⚙️</span> <span id="navSettings">Set</span></div>
+    <div class="tab" data-module="logout" onclick="logout()"><span>🚪</span> <span id="navLogout">Exit</span></div>
+  </div>
+
+  <div class="container" id="tab-list">
+    <div class="date-filter-bar" id="custDateFilter">
+      <div class="date-chip active" onclick="setCustDateFilter('all', this)">All</div>
+      <div class="date-chip" onclick="setCustDateFilter('today', this)">📅 Aaj</div>
+      <div class="date-chip" onclick="setCustDateFilter('week', this)">📆 Hafte</div>
+      <div class="date-chip" onclick="setCustDateFilter('month', this)">🗓️ Mahine</div>
+      <div class="date-chip" onclick="setCustDateFilter('custom', this)">🎯 Custom</div>
+    </div>
+    <div class="search-wrap"><input type="text" id="searchBox" placeholder="Naam ya number se dhoondein..." oninput="renderCustomers()"></div>
+    <div id="customersList"></div>
+  </div>
+
+  <div class="container" id="tab-add" style="display:none;">
+    <div class="form-card">
+      <h3>Naya Customer Add Karein</h3>
+      <div class="form-field"><label>Customer ka Naam *</label><input type="text" id="cName" placeholder="Misal: Ali Ahmad"></div>
+      <div class="form-field"><label>Phone Number *</label><input type="tel" id="cPhone" placeholder="923001234567"><div class="hint">Format: 92XXXXXXXXXX (bina + ke)</div></div>
+      <div class="form-field"><label>WhatsApp Number (optional)</label><input type="tel" id="cWhatsapp" placeholder="923001234567"><div class="hint">Agar phone se alag hai to bharein</div></div>
+      <div class="form-field"><label>Shuru ka Baqaya (agar hai)</label><input type="number" id="cOpening" placeholder="0" value="0"></div>
+      <div class="form-field">
+        <label>Category Tags (optional)</label>
+        <div class="tags-picker" id="newCustTags">
+          <div class="tag-option vip" data-tag="vip" onclick="toggleNewTag(this)">⭐ VIP</div>
+          <div class="tag-option regular" data-tag="regular" onclick="toggleNewTag(this)">👤 Regular</div>
+          <div class="tag-option risky" data-tag="risky" onclick="toggleNewTag(this)">⚠️ Risky</div>
+          <div class="tag-option family" data-tag="family" onclick="toggleNewTag(this)">👨‍👩‍👧 Family</div>
+          <div class="tag-option new" data-tag="new" onclick="toggleNewTag(this)">🆕 New</div>
+          <div class="tag-option business" data-tag="business" onclick="toggleNewTag(this)">💼 Business</div>
+        </div>
+      </div>
+      <div class="form-field"><label>Notes (optional)</label><textarea id="cNotes" rows="2" placeholder="Misal: Roz aata hai, subah 10 baje"></textarea></div>
+      <button class="btn-save" onclick="addCustomer()"><span>✅</span> <span>Save Customer</span></button>
+    </div>
+  </div>
+
+  <div class="container" id="tab-stock" style="display:none;">
+    <div class="sub-tabs" style="display:flex;background:#f0f2f5;border-radius:12px;padding:4px;margin-bottom:12px;">
+      <div class="sub-tab active" id="subTabStock" onclick="switchSubTab('stock')" style="flex:1;padding:10px;text-align:center;font-weight:700;font-size:13px;color:var(--primary);border-radius:9px;cursor:pointer;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,0.08);">📦 Stock</div>
+      <div class="sub-tab" id="subTabSuppliers" onclick="switchSubTab('suppliers')" style="flex:1;padding:10px;text-align:center;font-weight:700;font-size:13px;color:var(--text-light);border-radius:9px;cursor:pointer;">🏪 Suppliers</div>
+    </div>
+    <div id="stockView">
+      <div style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;border-radius:16px;padding:16px;margin-bottom:12px;">
+        <h3 style="margin:0 0 12px;font-size:14px;font-weight:800;color:#f5d76e;">📊 Stock Dashboard</h3>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+          <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:10px;"><span style="font-size:10px;opacity:0.85;display:block;">Total Items</span><span id="dashTotalItems" style="font-size:16px;font-weight:800;color:#f5d76e;">0</span></div>
+          <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:10px;"><span style="font-size:10px;opacity:0.85;display:block;">Stock Value</span><span id="dashStockValue" style="font-size:16px;font-weight:800;color:#f5d76e;">Rs 0</span></div>
+          <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:10px;"><span style="font-size:10px;opacity:0.85;display:block;">Low Stock</span><span id="dashLowStock" style="font-size:16px;font-weight:800;color:#f5d76e;">0</span></div>
+          <div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:10px;"><span style="font-size:10px;opacity:0.85;display:block;">Out of Stock</span><span id="dashOutStock" style="font-size:16px;font-weight:800;color:#f5d76e;">0</span></div>
+        </div>
+      </div>
+      <div class="search-wrap"><input type="text" id="stockSearchBox" placeholder="Item ka naam dhoondein..." oninput="renderStockItems()"></div>
+      <button class="btn-save" style="margin-bottom:12px;" onclick="openAddStockItem()"><span>➕</span> <span>Add New Item</span></button>
+      <div id="stockList"></div>
+    </div>
+    <div id="suppliersView" style="display:none;">
+      <div class="search-wrap"><input type="text" id="supplierSearchBox" placeholder="Supplier dhoondein..." oninput="renderSuppliers()"></div>
+      <button class="btn-save" style="margin-bottom:12px;" onclick="openAddSupplier()"><span>➕</span> <span>Add New Supplier</span></button>
+      <div id="suppliersList"></div>
+    </div>
+  </div>
+
+  <div class="container" id="tab-business" style="display:none;">
+    <section class="km-hero">
+      <div><span class="km-kicker">BUSINESS HEALTH</span><h2>Today at a glance</h2><p>Sales, profit, expenses, purchases and closing cash — one place.</p></div>
+      <div class="km-sync" id="kmSyncState">● Local-first</div>
+    </section>
+    <section class="km-metrics">
+      <article><span>Today Sales</span><strong id="kmTodaySales">Rs 0</strong><small id="kmTodayOrders">0 bills</small></article>
+      <article><span>Gross Profit</span><strong id="kmTodayProfit">Rs 0</strong><small>sale − item cost</small></article>
+      <article><span>Expenses</span><strong id="kmTodayExpense">Rs 0</strong><small>today</small></article>
+      <article><span>Receivable</span><strong id="kmBusinessDue">Rs 0</strong><small>customer baqaya</small></article>
+    </section>
+    <section class="km-card">
+      <div class="km-section-head"><div><h3>Quick Actions</h3><p>Counter par fast entry ke liye.</p></div></div>
+      <div class="km-action-grid">
+        <button onclick="KMFeatures.openSale()"><b>🧾 New Sale / POS</b><span>Cash ya udhaar bill</span></button>
+        <button onclick="KMFeatures.openPurchase()"><b>📥 Purchase</b><span>Supplier + stock in</span></button>
+        <button onclick="KMFeatures.openExpense()"><b>💸 Expense</b><span>Shop expense record</span></button>
+        <button onclick="KMFeatures.openClosing()"><b>💰 Daily Closing</b><span>Expected vs actual cash</span></button>
+        <button onclick="KMFeatures.openBarcodeScanner()"><b>📷 Barcode</b><span>Camera/manual lookup</span></button>
+        <button onclick="KMFeatures.syncNow()"><b>☁️ Sync Now</b><span>Only changed/new data</span></button>
+      </div>
+    </section>
+    <div class="km-three-col">
+      <section class="km-card"><div class="km-section-head"><div><h3>Recent Sales</h3><p>Latest bills</p></div><button class="km-link" onclick="KMFeatures.renderBusiness()">Refresh</button></div><div id="kmSalesList" class="km-list"></div></section>
+      <section class="km-card"><div class="km-section-head"><div><h3>Purchases</h3><p>Latest stock purchases</p></div></div><div id="kmPurchaseList" class="km-list"></div></section>
+      <section class="km-card"><div class="km-section-head"><div><h3>Expenses</h3><p>Latest shop expenses</p></div></div><div id="kmExpenseList" class="km-list"></div></section>
+    </div>
+  </div>
+
+  <div class="container" id="tab-personal" style="display:none;">
+    <section class="km-hero km-personal-hero">
+      <div><span class="km-kicker">PERSONAL LEDGER</span><h2>Personal Hisab</h2><p>Business accounts se bilkul separate — diya, liya, installments aur due dates.</p></div>
+    </section>
+    <section class="km-metrics km-personal-metrics">
+      <article><span>Mujhe lene hain</span><strong id="kmLoanLent">Rs 0</strong><small>outstanding</small></article>
+      <article><span>Mujhe dene hain</span><strong id="kmLoanBorrowed">Rs 0</strong><small>outstanding</small></article>
+      <article><span>Due Soon</span><strong id="kmLoanDueSoon">0</strong><small>next 7 days</small></article>
+      <article><span>Active</span><strong id="kmLoanActive">0</strong><small>open loans</small></article>
+    </section>
+    <section class="km-card">
+      <div class="km-action-grid compact">
+        <button onclick="KMFeatures.openLoan('lent')"><b>↗️ Maine Diya</b><span>Personal loan / advance</span></button>
+        <button onclick="KMFeatures.openLoan('borrowed')"><b>↙️ Maine Liya</b><span>Borrowed amount</span></button>
+        <button onclick="KMFeatures.openLoanPayment()"><b>💵 Payment</b><span>Installment / recovery</span></button>
+      </div>
+    </section>
+    <section class="km-card"><div class="km-section-head"><div><h3>Loan Register</h3><p>Personal only — business profit mein include nahi hota.</p></div></div><div class="loan-filters"><input id="personalLoanSearch" placeholder="Naam se loan dhoondein" aria-label="Search loans"><select id="personalLoanDirection" aria-label="Loan direction"><option value="all">Tamam loans</option><option value="lent">Mujhe lene hain</option><option value="borrowed">Mujhe dene hain</option></select></div><div id="kmLoanList" class="km-list"></div></section>
+    <section class="km-card h360-salary-card">
+      <div class="km-section-head"><div><h3>Income & Personal Expenses</h3><p>Salary, extra income, personal kharch, savings aur annual hisaab.</p></div><button class="km-link" onclick="KMFeatures.renderSalary()">Refresh</button></div>
+      <div class="km-metrics h360-salary-metrics">
+        <article><span>This Month Income</span><strong id="h360SalaryIncome">Rs 0</strong><small>salary + extra</small></article>
+        <article><span>This Month Kharch</span><strong id="h360SalaryExpense">Rs 0</strong><small>personal expenses</small></article>
+        <article><span>Monthly Savings</span><strong id="h360SalaryRemaining">Rs 0</strong><small>income − kharch</small></article>
+        <article><span>Annual Savings</span><strong id="h360AnnualSavings">Rs 0</strong><small>current year</small></article>
+      </div>
+      <div class="km-action-grid compact">
+        <button onclick="KMFeatures.openSalaryIncome()"><b>💼 Salary / Income</b><span>Monthly salary or extra income</span></button>
+        <button onclick="KMFeatures.openPersonalExpense()"><b>💸 Personal Expense</b><span>Where salary was spent</span></button>
+        <button onclick="KMFeatures.openSalaryReport()"><b>📊 Annual Report</b><span>Income, expense, savings by month</span></button>
+      </div>
+      <div id="h360ExpenseBreakdown" class="finance-breakdown"></div><div id="h360SalaryRecent" class="km-list" style="margin-top:12px"></div>
+    </section>
+  </div>
+
+  <div class="container" id="tab-summary" style="display:none;">
+    <div class="date-filter-bar" id="summaryDateFilter">
+      <div class="date-chip" onclick="setSummaryDateFilter('today', this)">📅 Aaj</div>
+      <div class="date-chip active" onclick="setSummaryDateFilter('week', this)">📆 Hafte</div>
+      <div class="date-chip" onclick="setSummaryDateFilter('month', this)">🗓️ Mahine</div>
+      <div class="date-chip" onclick="setSummaryDateFilter('year', this)">📅 Saal</div>
+      <div class="date-chip" onclick="setSummaryDateFilter('custom', this)">🎯 Custom</div>
+    </div>
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;border-radius:16px;padding:18px;margin-bottom:12px;">
+      <h3 style="margin:0 0 4px;font-size:13px;font-weight:700;color:#f5d76e;text-transform:uppercase;">📊 Summary Report</h3>
+      <div id="summaryPeriod" style="font-size:12px;opacity:0.85;margin-bottom:12px;">—</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:12px;"><span style="font-size:10px;opacity:0.85;display:block;margin-bottom:4px;">📈 TOTAL UDHAAR</span><span id="sumTotalDebit" style="font-size:18px;font-weight:800;color:#f5d76e;">Rs 0</span><div id="sumDebitCount" style="font-size:10px;opacity:0.7;margin-top:4px;">0 transactions</div></div>
+        <div style="background:rgba(255,255,255,0.12);border-radius:12px;padding:12px;"><span style="font-size:10px;opacity:0.85;display:block;margin-bottom:4px;">📉 TOTAL WASOOLI</span><span id="sumTotalCredit" style="font-size:18px;font-weight:800;color:#f5d76e;">Rs 0</span><div id="sumCreditCount" style="font-size:10px;opacity:0.7;margin-top:4px;">0 transactions</div></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div style="background:#fff;border-radius:14px;padding:14px;border-left:4px solid var(--gold);"><span style="font-size:22px;">💰</span><div id="sumNetBalance" style="font-size:20px;font-weight:800;margin:6px 0 4px;">Rs 0</div><div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;">Net Balance</div></div>
+      <div style="background:#fff;border-radius:14px;padding:14px;border-left:4px solid var(--red);"><span style="font-size:22px;">👥</span><div id="sumActiveCustomers" style="font-size:20px;font-weight:800;margin:6px 0 4px;">0</div><div style="font-size:11px;font-weight:600;color:var(--text-light);text-transform:uppercase;">Active Customers</div></div>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;">
+      <h4 style="margin:0 0 10px;font-size:13px;font-weight:800;color:var(--primary);display:flex;justify-content:space-between;">📈 Daily Trend <span id="chartPeriodLabel" style="font-size:11px;color:var(--text-light);">Last 7 days</span></h4>
+      <div style="position:relative;height:200px;"><canvas id="summaryChart"></canvas></div>
+    </div>
+    <div style="font-size:13px;font-weight:800;color:var(--primary);margin:14px 0 10px;display:flex;justify-content:space-between;"><span>🏆 Top Customers</span><span id="topCustCount" style="font-size:11px;background:#f0f2f5;padding:3px 10px;border-radius:8px;color:var(--text-light);">0</span></div>
+    <div id="topCustomersList"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px;">
+      <button onclick="exportSummaryPDF()" style="padding:12px;border-radius:11px;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(135deg,#9b59b6,#8e44ad);">📄 PDF Report</button>
+      <button onclick="shareSummaryText()" style="padding:12px;border-radius:11px;font-weight:700;font-size:12px;color:#fff;background:linear-gradient(135deg,#f39c12,#d68910);">✨ VIP Image / PDF</button>
+    </div>
+  </div>
+
+  <div class="container" id="tab-requests" style="display:none;">
+    <div style="font-size:13px;font-weight:800;color:var(--primary);margin:14px 0 10px;display:flex;justify-content:space-between;"><span>📥 Pending Requests</span><span id="reqCount" style="font-size:11px;background:#f0f2f5;padding:3px 10px;border-radius:8px;color:var(--text-light);">0</span></div>
+    <div id="requestsList"></div>
+    <div style="font-size:13px;font-weight:800;color:var(--primary);margin:20px 0 10px;display:flex;justify-content:space-between;"><span>👥 All Users</span><span id="usersCount" style="font-size:11px;background:#f0f2f5;padding:3px 10px;border-radius:8px;color:var(--text-light);">0</span></div>
+    <div id="usersList"></div>
+  </div>
+
+  <div class="container" id="tab-settings" style="display:none;">
+    <div style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;border-radius:16px;padding:20px;margin-bottom:12px;text-align:center;">
+      <div style="font-size:36px;margin-bottom:8px;">💻</div>
+      <h4 style="margin:0 0 4px;font-size:17px;font-weight:800;color:#f5d76e;">Yasir Khan</h4>
+      <div style="font-size:11px;opacity:0.9;font-style:italic;margin-bottom:8px;">"Har Dukaan, Ek Khata" ✨</div>
+      <div style="font-size:12px;opacity:0.95;">Designed & Developed with ❤️<br><strong style="color:#f5d76e;">Hisab360 System</strong></div>
+    </div>
+    <section class="km-card km-settings-card h360-workspace-card">
+      <div class="km-section-head"><div><h3>🗂️ Accounts / Workspaces</h3><p>One login, separate category-wise accounts.</p></div><button class="km-link" onclick="H360.openAddWorkspace()">＋ Add</button></div>
+      <div id="h360WorkspaceList" class="h360-workspace-list"></div>
+      <div class="km-note">New category/workspace request pehle Master approval mein jayegi. Har workspace ki primary category alag aur data isolated rehta hai.</div>
+      <div class="km-btn-row" style="margin-top:10px"><button class="km-btn ghost" onclick="H360.openDeletedWorkspaces()">♻️ Deleted Accounts (30 days)</button><button class="km-btn danger" onclick="H360.requestDeleteWorkspace()">🗑️ Delete Current Account</button></div>
+    </section>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>🏷️ Header & Receipt Identity</h3><p>Shop/account name, header style aur receipt layout.</p></div><button class="km-link" onclick="H360.openBrandingEditor()">Customize</button></div>
+      <div class="h360-brand-preview"><span id="h360BrandIcon">📒</span><div><b id="h360BrandName">Hisab360</b><small id="h360BrandMeta">Modern · Navy Gold</small></div></div>
+    </section>
+    <div style="background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">🏪 Shop Info</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">Shop Name</div><div id="settingsShopName" style="font-size:11px;color:var(--text-light);margin-top:2px;">-</div></div><button onclick="editShopField('shopName')" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Edit</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">Location</div><div id="settingsShopLocation" style="font-size:11px;color:var(--text-light);margin-top:2px;">-</div></div><button onclick="editShopField('shopLocation')" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Edit</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;"><div><div style="font-size:13px;font-weight:600;">Shop Phone</div><div id="settingsShopPhone" style="font-size:11px;color:var(--text-light);margin-top:2px;">-</div></div><button onclick="editShopField('shopPhone')" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Edit</button></div>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">🔐 Security</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">App Lock PIN</div><div style="font-size:11px;color:var(--text-light);">App khulte waqt PIN maange</div></div><button onclick="changeAppPin()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Change</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">App Lock</div><div style="font-size:11px;color:var(--text-light);">Abhi: <strong id="appLockStatus">ON</strong></div></div><button id="appLockToggleBtn" onclick="toggleAppLock()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Disable</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">Delete PIN</div><div style="font-size:11px;color:var(--text-light);">Customer delete karne ke liye</div></div><button onclick="changeDeletePin()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Change</button></div>
+      <div id="masterPinRow" style="display:none;justify-content:space-between;align-items:center;padding:10px 0;"><div><div style="font-size:13px;font-weight:600;">Master PIN 🔑</div><div style="font-size:11px;color:var(--text-light);">Account approve karne ke liye</div></div><button onclick="changeMasterPin()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Change</button></div>
+    </div>
+    <div id="itemsManageCard" style="display:none;background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">🛒 Items Manage <span style="font-size:11px;color:#7f8c8d;font-weight:500;">(Master Only)</span></h3>
+      <div id="itemsManageList"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+        <div class="form-field" style="margin-bottom:8px;"><input type="text" id="newItemEmoji" placeholder="Emoji (misal: 🧈)" value="🛒" style="text-align:center;"></div>
+        <div class="form-field" style="margin-bottom:8px;"><input type="text" id="newItemName" placeholder="Naya item ka naam (misal: Anday)"></div>
+        <button onclick="addNewItem()" style="width:100%;background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:10px;border-radius:10px;font-weight:700;font-size:12px;">➕ Item Add Karein</button>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">📧 Login Credentials</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);"><div><div style="font-size:13px;font-weight:600;">Email</div><div id="settingsEmail" style="font-size:11px;color:var(--text-light);">-</div></div><button onclick="changeEmail()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Change</button></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;"><div><div style="font-size:13px;font-weight:600;">Password</div><div style="font-size:11px;color:var(--text-light);">Aakhri baar: <span id="passChangedAt">Kabhi nahi</span></div></div><button onclick="changePassword()" style="background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:6px 14px;border-radius:10px;font-size:11px;font-weight:700;">Change</button></div>
+    </div>
+    <div style="background:linear-gradient(135deg,#fff,#f8f9fb);border-radius:16px;padding:18px;margin-bottom:12px;border-left:4px solid var(--gold);box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 6px;color:var(--primary);font-size:15px;font-weight:800;">📊 Reports & Export</h3>
+      <div style="font-size:11px;color:var(--text-light);margin-bottom:12px;line-height:1.5;">CSV/PDF reports aur complete versioned backup. Restore aur secure/cloud options neeche hain.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button onclick="KMFeatures.exportBackup(false)" style="padding:10px;border-radius:11px;font-weight:700;font-size:11px;color:#fff;background:linear-gradient(135deg,#3498db,#2874a6);">📥 JSON</button>
+        <button onclick="H360WeeklyBackup.run(true)" class="km-btn ghost">📅 Backup All Accounts Now</button>
+        <button onclick="downloadBackupCSV()" style="padding:10px;border-radius:11px;font-weight:700;font-size:11px;color:#fff;background:linear-gradient(135deg,#25D366,#128C7E);">📊 CSV</button>
+        <button onclick="downloadFullPDF()" style="padding:10px;border-radius:11px;font-weight:700;font-size:11px;color:#fff;background:linear-gradient(135deg,#9b59b6,#8e44ad);">📄 PDF</button>
+        <button onclick="shareBackupWhatsApp()" style="padding:10px;border-radius:11px;font-weight:700;font-size:11px;color:#fff;background:linear-gradient(135deg,#f39c12,#d68910);">📤 Share</button>
+      </div>
+      <div style="font-size:10px;color:#7f8c8d;margin-top:10px;text-align:center;">Last backup: <span id="lastBackupAt">Kabhi nahi</span></div>
+    </div>
+    <div id="activityLogCard" style="display:none;background:#fff;border-radius:16px;padding:18px;margin-bottom:12px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">📋 Activity Log <span style="font-size:11px;color:#7f8c8d;font-weight:500;">(Master Only)</span></h3>
+      <div class="date-filter-bar" style="padding:0;margin-bottom:10px;">
+        <div class="date-chip active" onclick="setLogFilter('today', this)">📅 Aaj</div>
+        <div class="date-chip" onclick="setLogFilter('week', this)">📆 Hafte</div>
+        <div class="date-chip" onclick="setLogFilter('month', this)">🗓️ Mahine</div>
+        <div class="date-chip" onclick="setLogFilter('all', this)">All</div>
+      </div>
+      <div id="activityLogList" style="max-height:400px;overflow-y:auto;"></div>
+      <button onclick="clearOldLogs()" style="width:100%;margin-top:10px;background:linear-gradient(135deg,#1e3a5f,#2d5a8c);color:#fff;padding:10px;border-radius:10px;font-weight:700;font-size:12px;">🗑️ Purane Logs (30+ din) Delete</button>
+    </div>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>🌐 Language & Guidance</h3><p>English / اردو and first-run help.</p></div></div>
+      <div class="km-segmented"><button onclick="H360.setLanguage('en')">English</button><button onclick="H360.setLanguage('ur')">اردو</button><button onclick="H360.showOnboarding(true)">💡 Tutorial</button></div>
+      <div class="km-note">Tutorial installation/workspace par pehli dafa automatically show hota hai; baad mein yahan se dobara khola ja sakta hai.</div>
+    </section>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>🔑 Trusted Device Session</h3><p>First login ke baad session persistent. Re-login sirf logout, revoke/lockout ya uninstall/reset par.</p></div></div>
+      <div class="km-status-grid"><div><span>Firebase session</span><b>Persistent</b></div><div><span>App PIN</span><b id="h360TrustedLockState">Optional / OFF</b></div><div><span>Re-login</span><b>Logout / revoke / uninstall</b></div><div><span>Master lockout</span><b>Live profile check</b></div></div>
+    </section>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>🎨 Appearance & Device</h3><p>Phone aur tablet dono ke liye adaptive UI.</p></div></div>
+      <div class="km-segmented">
+        <button onclick="KMFeatures.setTheme('light')">☀️ Light</button>
+        <button onclick="KMFeatures.setTheme('dark')">🌙 Dark</button>
+        <button onclick="KMFeatures.setTheme('system')">📱 System</button>
+      </div>
+      <label class="km-switch-row"><span><b>Compact counter mode</b><small>POS par larger touch targets + less decoration</small></span><input id="kmCompactToggle" type="checkbox" onchange="KMFeatures.setCompact(this.checked)"></label>
+    </section>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>🛡️ Backup & Restore</h3><p>Versioned JSON, restore preview, phone aur cloud-share support.</p></div></div>
+      <div class="km-action-grid compact">
+        <button onclick="KMFeatures.exportBackup(false)"><b>📦 Full JSON</b><span>Phone backup</span></button>
+        <button onclick="KMFeatures.openCloudBackupMenu()"><b>☁️ Cloud Backup</b><span>Drive / OneDrive / Dropbox</span></button>
+        <button onclick="document.getElementById('kmRestoreFile').click()"><b>♻️ Restore</b><span>Preview before import</span></button>
+        <button onclick="KMFeatures.exportBackup(true)"><b>🔐 Secure Backup</b><span>Password protected</span></button>
+        <button onclick="KMFeatures.openRecycleBin()"><b>🗑️ Recycle Bin</b><span>30-day restore for deleted records</span></button>
+      </div>
+      <input id="kmRestoreFile" type="file" accept=".json,.h360backup,application/json" hidden onchange="KMFeatures.previewRestore(this.files[0])">
+      <div class="km-note">Save a backup to your phone, Google Drive, OneDrive or Dropbox using the share menu.</div>
+      <div class="km-last">Last Hisab360 backup: <b id="kmLastBackup">Never</b></div>
+      <p id="weeklyBackupStatus" class="finance-hint">Har 7 din automatic JSON · Documents/Hisab360/Backups. App band ho to next open par overdue backup chalega.</p>
+    </section>
+    <section class="km-card km-settings-card">
+      <div class="km-section-head"><div><h3>☁️ Sync & Data</h3><p>Keep your workspace up to date. Previously loaded records remain available when offline.</p></div></div>
+      <div class="km-status-grid"><div><span>Connection</span><b id="kmFirebaseState">Online / cached</b></div><div><span>Last sync</span><b id="kmLastSync">Not yet</b></div><div><span>Workspace</span><b>Only active account</b></div><div><span>Mode</span><b>Saved on this device</b></div></div><div class="km-btn-row" style="margin-top:10px"><button class="km-btn" onclick="KMFeatures.syncNow()">☁️ Sync Now</button><button class="km-btn ghost" onclick="KMFeatures.openCloudBackupMenu()">🛡️ Backup</button></div>
+    </section>
+    <div style="background:#fff;border-radius:16px;padding:18px;box-shadow:var(--shadow-sm);">
+      <h3 style="margin:0 0 12px;color:var(--primary);font-size:15px;font-weight:800;">ℹ️ About</h3>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><div style="font-weight:600;">📱 App</div><div style="font-size:11px;color:var(--text-light);">Hisab360</div></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><div style="font-weight:600;">🔢 Version</div><div style="font-size:11px;color:var(--text-light);">7.2.1</div></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><div style="font-weight:600;">💻 Developer</div><div style="font-size:11px;color:var(--primary);font-weight:800;">Yasir Khan</div></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><div style="font-weight:600;">🎨 Design & Code</div><div style="font-size:11px;color:var(--text-light);">Yasir Khan</div></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;"><div style="font-weight:600;">🔐 Backend</div><div style="font-size:11px;color:var(--text-light);">Firebase Firestore</div></div>
+      <div style="padding:8px 0;font-size:13px;"><div style="font-weight:600;">👤 Your Role</div><div id="settingsRole" style="font-size:11px;color:var(--text-light);">-</div></div>
+    </div>
+    <footer class="h360-page-end-credit">
+      <span>© 2026 Hisab360</span><span>•</span><strong>Yasir Khan</strong>
+    </footer>
+  </div>
+
+  <button id="fab" onclick="switchTab('add', document.querySelectorAll('.tab')[1])">+</button>
+</div>
+
+<div id="detailPage">
+  <div class="detail-header">
+    <button class="back-btn" onclick="closeDetail()">←</button>
+    <div class="title"><h2 id="detailName">Customer</h2><p id="detailPhone">📱</p></div>
+  </div>
+  <div class="detail-body">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:14px;background:#fff;border-radius:16px;box-shadow:var(--shadow-sm);">
+      <div id="profilePhoto" style="width:66px;height:66px;border-radius:20px;background:linear-gradient(135deg,#1e3a5f,#2d5a8c);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:800;flex-shrink:0;">A</div>
+      <div style="flex:1;min-width:0;">
+        <p id="profileName" style="font-weight:800;font-size:16px;margin:0 0 4px;">Customer</p>
+        <p id="profilePhone" style="font-size:12px;color:var(--text-light);margin:0;">📱</p>
+        <div id="profileTags" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;"></div>
+      </div>
+    </div>
+    <div id="notesBox" style="display:none;background:#fffbf0;border-left:4px solid var(--orange);border-radius:12px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--orange);text-transform:uppercase;margin-bottom:6px;display:flex;justify-content:space-between;">📝 Notes <button onclick="editCustomerNotes()" style="background:rgba(243,156,18,0.15);color:var(--orange);border:none;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;">✏️ Edit</button></div>
+      <div id="notesContent" style="font-size:13px;line-height:1.5;word-break:break-word;"></div>
+    </div>
+    <div id="familySection" style="display:none;background:#f8f9fb;border-radius:12px;padding:12px;margin-bottom:12px;">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between;">👨‍👩‍👧 Family <button onclick="openFamilyLinkPicker()" style="background:rgba(30,58,95,0.1);color:var(--primary);border:none;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;">➕ Add</button></div>
+      <div id="familyList" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+    </div>
+    <div id="balanceCard" style="background:#fff;border-radius:20px;padding:20px;text-align:center;box-shadow:var(--shadow-md);border-left:5px solid var(--red);margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--text-light);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Total Baqaya</div>
+      <div id="detailBalance" style="font-size:32px;font-weight:800;color:var(--red);line-height:1;">Rs 0</div>
+      <div id="detailTxnCount" style="font-size:12px;color:var(--text-light);margin-top:8px;">0 transactions</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;">
+      <button onclick="openAddTxn('debit')" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;display:flex;align-items:center;justify-content:center;">➕</div><div>Udhaar</div></button>
+      <button onclick="openAddTxn('credit')" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;display:flex;align-items:center;justify-content:center;">💵</div><div>Wasooli</div></button>
+      <button onclick="remindCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#f39c12,#d68910);color:#fff;display:flex;align-items:center;justify-content:center;">🔔</div><div>Reminder</div></button>
+      <button onclick="exportPDFCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#9b59b6,#8e44ad);color:#fff;display:flex;align-items:center;justify-content:center;">📄</div><div>PDF</div></button>
+      <button onclick="shareKhataCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;display:flex;align-items:center;justify-content:center;">📤</div><div>Share</div></button>
+      <button onclick="shareImageCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#3498db,#2874a6);color:#fff;display:flex;align-items:center;justify-content:center;">🖼️</div><div>Image</div></button>
+      <button onclick="callCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#1abc9c,#16a085);color:#fff;display:flex;align-items:center;justify-content:center;">📞</div><div>Call</div></button>
+      <button onclick="printReceipt()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#9b59b6,#8e44ad);color:#fff;display:flex;align-items:center;justify-content:center;">🧾</div><div>Receipt</div></button>
+      <button onclick="openEditCustomer()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--text);border:none;cursor:pointer;"><div style="font-size:22px;width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#3498db,#2874a6);color:#fff;display:flex;align-items:center;justify-content:center;">✏️</div><div>Edit</div></button>
+      <button onclick="delCurrent()" style="background:#fff;border-radius:14px;padding:14px;display:flex;flex-direction:row;align-items:center;gap:6px;box-shadow:var(--shadow-sm);font-weight:700;font-size:12px;color:var(--red);border:1.5px solid #fadbd8;cursor:pointer;grid-column:span 2;justify-content:center;">🗑️ Delete Customer</button>
+    </div>
+    <div style="font-size:13px;font-weight:800;color:var(--primary);margin:16px 0 10px;display:flex;justify-content:space-between;"><span>📋 Transactions</span><span id="txnCountBadge" style="font-size:11px;background:#f0f2f5;padding:3px 10px;border-radius:8px;color:var(--text-light);">0</span></div>
+    <div id="detailTxns"></div>
+    <div style="text-align:center;padding:20px 0;font-size:10px;color:#7f8c8d;">💻 App by <strong style="color:var(--primary);">Yasir Khan</strong></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<div id="modal" onclick="if(event.target.id==='modal') closeModal()"><div id="modalBox"></div></div>
+<div id="pdfViewer">
+  <div class="pdf-header">
+    <button class="pdf-close" onclick="closePdfViewer()">← Back</button>
+    <h3 id="pdfTitle">📄 Report</h3>
+    <button class="pdf-close" onclick="printPdfFrame()">🖨️ Print</button>
+    <button class="pdf-close" onclick="openSharePdfModal()">📤 Share</button>
+  </div>
+  <iframe id="pdfFrame"></iframe>
+</div>
+<div class="global-credit" id="globalCredit" aria-hidden="true"></div>
+
+<script type="module" src="js/app.js"></script>
+<script type="module" src="js/features.js"></script>
+<script type="module" src="js/v6.js"></script>
+<script type="module" src="js/v7.js"></script>
+<script type="module" src="js/professional.js"></script>
+<script type="module" src="js/weekly-backup.js"></script>
+<script type="module" src="js/auth-flow.js"></script>
+<script type="module" src="js/save-control.js"></script>
+</body>
+</html>

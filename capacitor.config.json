@@ -1,0 +1,13 @@
+{
+  "appId": "com.yasirkhan.hisab360",
+  "appName": "Hisab360",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0B1220"
+  }
+}

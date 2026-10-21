@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {categoryModules,localDateKey,personalTotals,aggregateSaleLines} from '../www/js/domain.js';
+import {backupDue,WEEK_MS,commitBackup} from '../www/js/backup-policy.js';
+test('weekly backups run initially and at seven days',()=>{assert(backupDue(null));assert(!backupDue(1000,1000+WEEK_MS-1));assert(backupDue(1000,1000+WEEK_MS));});
+test('backup checkpoint advances only after file save succeeds',async()=>{let checkpoint=0;await assert.rejects(commitBackup({load:async()=>({}),write:async()=>{throw new Error('Storage full');},checkpoint:()=>checkpoint++}));assert.equal(checkpoint,0);await assert.rejects(commitBackup({load:async()=>{throw new Error('Offline');},write:async()=>{},checkpoint:()=>checkpoint++}));assert.equal(checkpoint,0);await commitBackup({load:async()=>({}),write:async()=>'/backup.json',checkpoint:()=>checkpoint++});assert.equal(checkpoint,1);});
+test('personal workspace has no business modules',()=>assert.deepEqual(categoryModules('personal'),['loans','reports']));
+test('local date uses local calendar, including midnight',()=>assert.equal(localDateKey(new Date(2026,9,12,0,15)),'2026-10-12'));
+test('loan directions stay separate from income and expenses',()=>assert.deepEqual(personalTotals([{type:'lent',outstanding:5000},{type:'borrowed',outstanding:35000},{type:'lent',outstanding:9000,deletedAt:1}],[{date:'2026-10-01',amount:50000},{date:'2026-09-30',amount:8000}],[{date:'2026-10-02',amount:12000}],'2026-10'),{receivable:5000,payable:35000,income:50000,expenses:12000,savings:38000}));
+test('duplicate sale item quantities are combined for stock validation',()=>assert.equal(aggregateSaleLines([{stockId:'a',qty:3,rate:5},{stockId:'a',qty:4,rate:5}]).get('a'),7));
+test('invalid financial input is rejected',()=>assert.throws(()=>aggregateSaleLines([{stockId:'a',qty:Infinity,rate:5}])));

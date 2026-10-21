@@ -1,0 +1,319 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // HISAB360 ONLY — Firestore Security Rules
+    // Master: s9oman28@gmail.com
+    // ============================================================
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function hasEmail() {
+      return signedIn()
+        && request.auth.token.email is string;
+    }
+
+    function isMaster() {
+      return hasEmail()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email == 's9oman28@gmail.com';
+    }
+
+    function profilePath() {
+      return /databases/$(database)/documents/users/$(request.auth.token.email);
+    }
+
+    function isApprovedUser() {
+      return hasEmail()
+        && exists(profilePath())
+        && (
+          !('blocked' in get(profilePath()).data)
+          || get(profilePath()).data.blocked != true
+        );
+    }
+
+    function ownsExisting(data) {
+      return isApprovedUser()
+        && request.auth.token.email_verified == true
+        && data.ownerEmail is string
+        && data.ownerEmail == request.auth.token.email;
+    }
+
+    function ownsNew() {
+      return isApprovedUser()
+        && request.auth.token.email_verified == true
+        && request.resource.data.ownerEmail is string
+        && request.resource.data.ownerEmail == request.auth.token.email;
+    }
+
+
+    function grantMatches(w) {
+      let path = /databases/$(database)/documents/workspace_approvals/$(request.auth.token.email)/workspaces/$(w.id);
+      return exists(path) && get(path).data.workspace.id == w.id
+        && get(path).data.workspace.category == w.category && get(path).data.workspace.modules == w.modules;
+    }
+    function validRecovery(old, next) {
+      let now = request.time.toMillis();
+      return (!('deletedAtMs' in old) && (!('deletedAtMs' in next)
+          || (next.deletedAtMs is int && next.deletedAtMs >= now - 300000 && next.deletedAtMs <= now + 300000
+            && next.purgeAfterMs == next.deletedAtMs + 2592000000 && next.deletedBy == request.auth.token.email)))
+        || (('deletedAtMs' in old) && (('deletedAtMs' in next)
+          ? (next.deletedAtMs == old.deletedAtMs && next.purgeAfterMs == old.purgeAfterMs
+            && (!('purgedAtMs' in next) || (now >= old.purgeAfterMs && next.purgedAtMs >= old.purgeAfterMs)))
+          : (now < old.purgeAfterMs && !('purgedAtMs' in old))));
+    }
+    function workspaceUnchangedAt(i) {
+      let next = request.resource.data.workspaces;
+      let old = resource.data.workspaces;
+      return next.size() <= i || (old.size() > i
+        ? (next[i].diff(old[i]).affectedKeys().hasOnly(['name','location','phone','whatsapp','language','branding','deletedAtMs','purgeAfterMs','deletedBy','purgedAtMs']) && validRecovery(old[i],next[i]))
+        : (grantMatches(next[i]) && !('deletedAtMs' in next[i])));
+    }
+    function protectedWorkspaces() {
+      return request.resource.data.workspaces.size() >= resource.data.workspaces.size()
+        && request.resource.data.workspaces.size() <= 10
+        && uniqueWorkspaces()
+        && workspaceUnchangedAt(0) && workspaceUnchangedAt(1) && workspaceUnchangedAt(2)
+        && workspaceUnchangedAt(3) && workspaceUnchangedAt(4) && workspaceUnchangedAt(5)
+        && workspaceUnchangedAt(6) && workspaceUnchangedAt(7) && workspaceUnchangedAt(8) && workspaceUnchangedAt(9);
+    }
+    function uniqueWorkspaces() {
+      let w = request.resource.data.workspaces;
+      let ids = [w.size()>0?w[0].id:0,w.size()>1?w[1].id:1,w.size()>2?w[2].id:2,w.size()>3?w[3].id:3,w.size()>4?w[4].id:4,w.size()>5?w[5].id:5,w.size()>6?w[6].id:6,w.size()>7?w[7].id:7,w.size()>8?w[8].id:8,w.size()>9?w[9].id:9];
+      return ids.toSet().size() == 10;
+    }
+    function canPurgeAt(ws,i,wid) {
+      return ws.size() > i && ws[i].id == wid
+        && (!('deletedAtMs' in ws[i]) || request.time.toMillis() >= ws[i].purgeAfterMs);
+    }
+    function canPurge(wid) {
+      let ws = get(profilePath()).data.workspaces;
+      return canPurgeAt(ws,0,wid) || canPurgeAt(ws,1,wid) || canPurgeAt(ws,2,wid)
+        || canPurgeAt(ws,3,wid) || canPurgeAt(ws,4,wid) || canPurgeAt(ws,5,wid)
+        || canPurgeAt(ws,6,wid) || canPurgeAt(ws,7,wid) || canPurgeAt(ws,8,wid) || canPurgeAt(ws,9,wid);
+    }
+    function workspaceAt(workspaces, i, wid, module) {
+      return workspaces.size() > i && workspaces[i].id == wid
+        && !('deletedAtMs' in workspaces[i])
+        && (module == 'all'
+          || (workspaces[i].category == 'personal' && module == 'loans')
+          || (workspaces[i].category != 'personal' && module in workspaces[i].modules));
+    }
+    function approvedWorkspace(wid, module) {
+      let workspaces = get(profilePath()).data.workspaces;
+      return isApprovedUser() && request.auth.token.email_verified == true
+        && (workspaceAt(workspaces, 0, wid, module)
+          || workspaceAt(workspaces, 1, wid, module)
+          || workspaceAt(workspaces, 2, wid, module)
+          || workspaceAt(workspaces, 3, wid, module)
+          || workspaceAt(workspaces, 4, wid, module)
+          || workspaceAt(workspaces, 5, wid, module)
+          || workspaceAt(workspaces, 6, wid, module)
+          || workspaceAt(workspaces, 7, wid, module)
+          || workspaceAt(workspaces, 8, wid, module)
+          || workspaceAt(workspaces, 9, wid, module));
+    }
+    function validWorkspaceWrite(module) {
+      return request.resource.data.workspaceId is string
+        && request.resource.data.workspaceKey == request.auth.token.email + '::' + request.resource.data.workspaceId
+        && approvedWorkspace(request.resource.data.workspaceId, module);
+    }
+
+    // ============================================================
+    // APPROVED USERS / MASTER PROFILE
+    // Document ID = Firebase Auth email
+    // ============================================================
+    match /users/{email} {
+      function ownProfile() { return hasEmail() && request.auth.token.email_verified == true && request.auth.token.email == email; }
+      allow read: if ownProfile();
+      allow create: if ownProfile() && request.resource.data.ownerEmail == email
+        && request.resource.data.keys().hasOnly(['role','ownerName','shopName','shopLocation','shopPhone','whatsapp','category','language','branding','workspaces','activeWorkspaceId','workspaceSchemaVersion','ownerEmail','approvedBy','approvedAt','blocked'])
+        && (isMaster() || (request.resource.data.workspaces.size() == 1 && grantMatches(request.resource.data.workspaces[0])));
+      allow update: if ownProfile() && isApprovedUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shopName','shopLocation','shopPhone','whatsapp','category','language','branding','workspaces','activeWorkspaceId','workspaceSchemaVersion'])
+        && request.resource.data.workspaces is list && protectedWorkspaces();
+      allow delete: if false;
+    }
+    match /workspace_approvals/{email}/workspaces/{wid} {
+      allow read: if isMaster() || (hasEmail() && request.auth.token.email_verified == true && request.auth.token.email == email);
+      allow create: if isMaster() && request.resource.data.email == email && request.resource.data.workspace.id == wid
+        && request.resource.data.workspace.keys().hasOnly(['id','name','category','modules','location','phone','whatsapp','language','branding','createdAtMs'])
+        && request.resource.data.keys().hasOnly(['email','workspace','ownerName','requestId','approvedBy','approvedAt'])
+        && request.resource.data.approvedBy == request.auth.token.email && request.resource.data.approvedAt == request.time
+        && get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.email == email
+        && (get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.requestType == 'workspace'
+          ? get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.workspaceId == wid : wid == 'default')
+        && request.resource.data.workspace.category == get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.category
+        && request.resource.data.workspace.modules == get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.modules
+        && get(/databases/$(database)/documents/account_requests/$(request.resource.data.requestId)).data.status == 'pending';
+      allow update, delete: if false;
+    }
+
+    // ============================================================
+    // ACCOUNT APPROVAL REQUESTS
+    // Signup creates Firebase Auth first, then this pending request.
+    // Password is NEVER stored in Firestore.
+    // ============================================================
+    match /account_requests/{requestId} {
+      allow create: if hasEmail()
+        && request.auth.token.email_verified == true
+        && (request.resource.data.requestType == 'signup' || (request.resource.data.requestType == 'workspace' && isApprovedUser()))
+        && (request.resource.data.requestType != 'signup' || requestId == request.auth.uid)
+        && request.resource.data.emailVerified == true
+        && request.resource.data.keys().hasOnly([
+          'name','shop','category','modules','language','headerStyle','receiptStyle','workspaceId','location','phone','whatsapp',
+          'email','authCreated','emailVerified','status','requestedAt','requestType'
+        ])
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.authCreated == true
+        && request.resource.data.requestedAt == request.time;
+
+      allow read: if isMaster()
+        || (
+          hasEmail()
+          && (requestId == request.auth.uid || resource.data.email == request.auth.token.email)
+        );
+
+      allow update: if isMaster() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','approvedAt','approvedBy','rejectedAt','rejectedBy','rejectReason']);
+      allow delete: if isMaster();
+    }
+
+    // ============================================================
+    // MASTER-MANAGED ITEM / CATEGORY CATALOGUE
+    // ============================================================
+    match /items/{id} {
+      allow read: if isMaster() || isApprovedUser();
+      allow create, update, delete: if false;
+    }
+
+    // ============================================================
+    // CUSTOMER KHATA
+    // ============================================================
+    match /customers/{id} {
+      allow read: if ownsExisting(resource.data);
+      allow create: if (ownsNew() && validWorkspaceWrite('khata'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('khata')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    // ============================================================
+    // CUSTOMER TRANSACTIONS
+    // ============================================================
+    match /transactions/{id} {
+      allow read: if ownsExisting(resource.data);
+      // An approved owner may check whether a new operation ID exists before creating it.
+      allow get: if isApprovedUser() && request.auth.token.email_verified == true
+        && !exists(/databases/$(database)/documents/transactions/$(id));
+      allow create: if (ownsNew() && validWorkspaceWrite('khata'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('khata')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    // ============================================================
+    // STOCK / INVENTORY
+    // ============================================================
+    match /stock_items/{id} {
+      allow read: if ownsExisting(resource.data);
+      allow create: if (ownsNew() && validWorkspaceWrite('stock'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('stock')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    match /stock_movements/{id} {
+      allow read: if ownsExisting(resource.data);
+      allow create: if (ownsNew() && validWorkspaceWrite('stock'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('stock')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    // ============================================================
+    // SUPPLIERS
+    // ============================================================
+    match /suppliers/{id} {
+      allow read: if ownsExisting(resource.data);
+      allow create: if (ownsNew() && validWorkspaceWrite('stock'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('stock')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    match /supplier_payments/{id} {
+      allow read: if ownsExisting(resource.data);
+      allow create: if (ownsNew() && validWorkspaceWrite('stock'));
+      allow update: if (
+          ownsExisting(resource.data)
+          && validWorkspaceWrite('stock')
+          && request.resource.data.workspaceId == resource.data.workspaceId
+          && request.resource.data.ownerEmail == resource.data.ownerEmail
+        );
+      allow delete: if ownsExisting(resource.data) && canPurge(resource.data.workspaceId);
+    }
+
+    // ============================================================
+    // LEGACY ACTIVITY LOG
+    // Master-only. New audit records live under km_users/{uid}/...
+    // ============================================================
+    match /activity_logs/{id} {
+      allow read, write: if false;
+    }
+
+    // ============================================================
+    // HISAB360 LOCAL-FIRST MODULES
+    // POS sales, purchases, business/personal expenses, salary, loans, loan payments,
+    // cash closings and audit records.
+    // Each authenticated account is isolated by Firebase Auth UID.
+    // ============================================================
+    match /km_users/{uid}/workspaces/{wid}/{kind}/{id} {
+      function ownWorkspace() { return request.auth.uid == uid && isApprovedUser(); }
+      function enabledKind() {
+        let module = kind in ['km_loans','km_loan_payments','km_salary','km_personal_expenses'] ? 'loans' : 'pos';
+        return (kind in ['km_loans','km_loan_payments','km_salary','km_personal_expenses','km_sales','km_purchases','km_expenses','km_closings']
+          && approvedWorkspace(wid,module)) || (kind == 'km_audit' && approvedWorkspace(wid,'all'));
+      }
+      allow read: if ownWorkspace() && request.auth.token.email_verified == true;
+      allow create, update: if (ownWorkspace() && enabledKind()
+        && request.resource.data.workspaceId == wid
+        && request.resource.data.updatedAtMs is number);
+      // Deleted workspaces can purge their own retained records after recovery expires.
+      allow delete: if (isApprovedUser() && request.auth.uid == uid
+        && request.auth.token.email_verified == true && canPurge(wid));
+    }
+
+    // ============================================================
+    // DEFAULT DENY
+    // Anything not explicitly listed above is blocked.
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
