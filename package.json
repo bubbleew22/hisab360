@@ -13,7 +13,7 @@
     "cap:sync": "npm run build:web && npx cap sync android",
     "android:debug": "npm run cap:sync && cd android && gradlew.bat assembleDebug",
     "android:aab": "npm run cap:sync && cd android && gradlew.bat bundleRelease",
-    "test": "node --test --test-isolation=none tests/domain.test.mjs",
+    "test": "node --test tests/domain.test.mjs",
     "test:rules": "firebase emulators:exec --project demo-hisab360 --only firestore \"node tests/firestore-rules.mjs\""
   },
   "dependencies": {
